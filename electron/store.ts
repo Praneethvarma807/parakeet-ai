@@ -9,6 +9,13 @@ interface StoreData {
   resumes: Resume[]
   sessions: InterviewSession[]
   users: User[]
+  popup: PopupState
+}
+
+export interface PopupState {
+  x?: number
+  y?: number
+  mode?: 'full' | 'compact'
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -45,7 +52,8 @@ export class ElectronStore {
           settings: { ...DEFAULT_SETTINGS, ...parsed.settings },
           resumes: parsed.resumes || [],
           sessions: parsed.sessions || [],
-          users: parsed.users || []
+          users: parsed.users || [],
+          popup: parsed.popup || {}
         }
       }
     } catch (err) {
@@ -55,7 +63,8 @@ export class ElectronStore {
       settings: { ...DEFAULT_SETTINGS },
       resumes: [],
       sessions: [],
-      users: []
+      users: [],
+      popup: {}
     }
   }
 
@@ -115,6 +124,15 @@ export class ElectronStore {
 
   getUsers(): User[] {
     return this.data.users
+  }
+
+  getPopupState(): PopupState {
+    return this.data.popup || {}
+  }
+
+  setPopupState(state: PopupState): void {
+    this.data.popup = { ...this.data.popup, ...state }
+    this.save()
   }
 
   saveUser(user: User): void {

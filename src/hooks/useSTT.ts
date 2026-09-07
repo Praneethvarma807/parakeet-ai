@@ -13,6 +13,14 @@ interface UseSTTHook {
 
 const DEEPGRAM_WS_URL = 'wss://api.deepgram.com/v1/listen'
 
+function popupState(state: { listening?: boolean; transcribing?: boolean }): void {
+  window.parakeet?.setPopupState(state)
+}
+
+function popupTranscript(text: string, isFinal: boolean): void {
+  window.parakeet?.sendTranscriptToPopup({ text, isFinal })
+}
+
 export function useSTT(): UseSTTHook {
   const [isListening, setIsListening] = useState(false)
   const [isSupported, setIsSupported] = useState(false)
@@ -52,6 +60,7 @@ export function useSTT(): UseSTTHook {
       mediaStreamRef.current = null
     }
     setIsListening(false)
+    popupState({ listening: false, transcribing: false })
   }, [])
 
   const startListening = useCallback(async () => {
@@ -80,7 +89,10 @@ export function useSTT(): UseSTTHook {
         wsRef.current = ws
         ws.binaryType = 'arraybuffer'
 
-        ws.onopen = () => setIsListening(true)
+        ws.onopen = () => {
+          setIsListening(true)
+          popupState({ listening: true })
+        }
 
         ws.onmessage = (event) => {
           try {
@@ -88,10 +100,13 @@ export function useSTT(): UseSTTHook {
             if (data.type === 'Results') {
               const transcript = data.channel?.alternatives?.[0]?.transcript || ''
               if (data.is_final && transcript) {
+                popupTranscript(transcript, true)
                 onTranscriptRef.current(transcript)
                 setInterimTranscript('')
+                popupState({ transcribing: false })
               } else if (!data.is_final) {
                 setInterimTranscript(transcript)
+                if (transcript) popupState({ transcribing: true })
               }
             }
           } catch (err) {
@@ -102,9 +117,13 @@ export function useSTT(): UseSTTHook {
         ws.onerror = () => {
           setError('Deepgram connection failed. Check your API key in Settings.')
           setIsListening(false)
+          popupState({ listening: false, transcribing: false })
         }
 
-        ws.onclose = () => setIsListening(false)
+        ws.onclose = () => {
+          setIsListening(false)
+          popupState({ listening: false, transcribing: false })
+        }
 
         const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)({
           sampleRate: 16000
@@ -164,8 +183,10 @@ export function useSTT(): UseSTTHook {
               const json = await res.json()
               const transcript = json.results?.channels?.[0]?.alternatives?.[0]?.transcript as string | undefined
               if (transcript) {
+                popupTranscript(transcript, true)
                 onTranscriptRef.current(transcript)
                 setInterimTranscript('')
+                popupState({ transcribing: false })
               }
             } catch (err) {
               console.error('Deepgram REST transcription error:', err)
@@ -178,11 +199,13 @@ export function useSTT(): UseSTTHook {
 
         recorder.start(3000)
         setIsListening(true)
+        popupState({ listening: true })
       }
     } catch (err) {
       console.error('Microphone access error:', err)
       setError('Microphone access denied. Please allow microphone permissions.')
       setIsListening(false)
+      popupState({ listening: false, transcribing: false })
     }
   }, [settings])
 

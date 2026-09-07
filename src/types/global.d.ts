@@ -28,6 +28,30 @@ declare global {
       classifyQuestion: (question: string) => Promise<import('../src/types/index').QuestionClassification>
       evaluateInterview: (sessionId: string) => Promise<import('../src/types/index').InterviewFeedback>
       openExternalLink: (url: string) => Promise<void>
+      onGlobalShortcut: (callback: (action: string) => void) => () => void
+      sendTranscriptToPopup: (data: { text: string; isFinal: boolean }) => void
+      setPopupState: (data: { listening?: boolean; transcribing?: boolean }) => void
+      showPopup: () => void
+      hidePopup: () => void
+      togglePopup: () => void
+      clearPopupTranscript: () => void
+    }
+  }
+
+  interface Window {
+    parakeetPopup: {
+      toggleListening: () => void
+      hide: () => void
+      toggle: () => void
+      resize: (width: number, height: number) => void
+      setMode: (mode: 'full' | 'compact') => void
+      getMode: () => Promise<string>
+      onTranscript: (
+        callback: (data: { text: string; isFinal: boolean; clear?: boolean }) => void
+      ) => () => void
+      onState: (
+        callback: (data: { listening?: boolean; transcribing?: boolean }) => void
+      ) => () => void
     }
   }
 }

@@ -20,7 +20,24 @@ const api = {
   generateAnswer: (payload: unknown) => ipcRenderer.invoke('ai:generateAnswer', payload),
   classifyQuestion: (question: string) => ipcRenderer.invoke('ai:classifyQuestion', question),
   evaluateInterview: (sessionId: string) => ipcRenderer.invoke('ai:evaluateInterview', sessionId),
-  openExternalLink: (url: string) => ipcRenderer.invoke('app:openExternal', url)
+  openExternalLink: (url: string) => ipcRenderer.invoke('app:openExternal', url),
+
+  // Global shortcuts + listening popup
+  onGlobalShortcut: (callback: (action: string) => void) => {
+    const listener = (_e: unknown, action: string) => callback(action)
+    ipcRenderer.on('global-shortcut', listener)
+    return () => {
+      ipcRenderer.removeListener('global-shortcut', listener)
+    }
+  },
+  sendTranscriptToPopup: (data: { text: string; isFinal: boolean }) =>
+    ipcRenderer.send('popup:transcript', data),
+  setPopupState: (data: { listening?: boolean; transcribing?: boolean }) =>
+    ipcRenderer.send('popup:state', data),
+  showPopup: () => ipcRenderer.send('popup:show'),
+  hidePopup: () => ipcRenderer.send('popup:hide'),
+  togglePopup: () => ipcRenderer.send('popup:toggle'),
+  clearPopupTranscript: () => ipcRenderer.send('popup:clear')
 }
 
 contextBridge.exposeInMainWorld('parakeet', api)

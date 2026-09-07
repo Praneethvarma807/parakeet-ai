@@ -26,10 +26,29 @@ export default defineConfig({
             outDir: 'dist-electron'
           }
         }
+      },
+      {
+        entry: 'electron/popup-preload.ts',
+        onstart(options) {
+          options.reload()
+        },
+        vite: {
+          build: {
+            outDir: 'dist-electron'
+          }
+        }
       }
     ]),
     renderer()
   ],
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        popup: path.resolve(__dirname, 'popup.html')
+      }
+    }
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')

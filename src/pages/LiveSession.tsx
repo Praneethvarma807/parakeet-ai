@@ -7,6 +7,19 @@ import type { AIResponse, QuestionClassification, TranscriptEntry } from '../typ
 
 type SessionStatus = 'waiting' | 'active' | 'paused' | 'ended'
 
+const SHORTCUTS: { keys: string; label: string }[] = [
+  { keys: 'Ctrl + Shift + Space', label: 'Start / stop listening' },
+  { keys: 'Ctrl + Shift + A', label: 'Generate AI answer' },
+  { keys: 'Ctrl + Shift + R', label: 'Regenerate answer' },
+  { keys: 'Ctrl + Shift + S', label: 'Show / hide assistant popup' },
+  { keys: 'Ctrl + Shift + P', label: 'Pause / resume transcription' },
+  { keys: 'Ctrl + Shift + C', label: 'Clear current question' },
+  { keys: 'Ctrl + Shift + M', label: 'Toggle microphone' },
+  { keys: 'Ctrl + Shift + Q', label: 'End interview session' },
+  { keys: 'Ctrl + Shift + H', label: 'Show shortcut help' },
+  { keys: 'Esc', label: 'Hide popup' }
+]
+
 export default function LiveSession() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -25,8 +38,24 @@ export default function LiveSession() {
   const [elapsed, setElapsed] = useState(0)
   const [manualQuestion, setManualQuestion] = useState('')
   const [answerLengthMode, setAnswerLengthMode] = useState<'natural' | 'shorter' | 'technical'>(session?.answerStyle === 'concise' ? 'shorter' : 'natural')
+  const [showHelp, setShowHelp] = useState(false)
 
   const { isListening, isSupported, error: sttError, startListening, stopListening, onTranscript, interimTranscript } = useSTT()
+
+  const shortcutHandlerRef = useRef<(action: string) => void>(() => {})
+
+  useEffect(() => {
+    if (!window.parakeet) return
+    const off = window.parakeet.onGlobalShortcut((action) => shortcutHandlerRef.current(action))
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') window.parakeet.hidePopup()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      off()
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [])
 
   useEffect(() => {
     if (!session) {
@@ -34,6 +63,39 @@ export default function LiveSession() {
       return
     }
   }, [session, navigate])
+
+  shortcutHandlerRef.current = (action) => {
+    switch (action) {
+      case 'toggle-listening':
+      case 'toggle-microphone':
+        if (isListening) stopListening()
+        else { window.parakeet?.showPopup(); startListening() }
+        break
+      case 'generate-answer':
+        if (currentQuestion) regenerate()
+        else if (manualQuestion.trim()) handleManualSubmit()
+        break
+      case 'regenerate-answer':
+        if (currentQuestion) regenerate()
+        break
+      case 'pause-transcription':
+        if (isListening) stopListening()
+        else { window.parakeet?.showPopup(); startListening() }
+        break
+      case 'clear-question':
+        setCurrentQuestion('')
+        setAnswer(null)
+        setClassification(null)
+        window.parakeet?.clearPopupTranscript()
+        break
+      case 'end-session':
+        if (session) endSession()
+        break
+      case 'show-shortcuts':
+        setShowHelp(true)
+        break
+    }
+  }
 
   const resume = useMemo(() => {
     if (!session?.resumeId) return undefined
@@ -198,6 +260,7 @@ export default function LiveSession() {
     if (isListening) {
       stopListening()
     } else {
+      window.parakeet?.showPopup()
       startListening()
     }
   }
@@ -210,9 +273,11 @@ export default function LiveSession() {
       stopListening()
     } else if (status === 'paused') {
       next = 'active'
+      window.parakeet?.showPopup()
       startListening()
     } else {
       next = 'active'
+      window.parakeet?.showPopup()
     }
     setStatus(next)
     const updated = { ...session, status: next as InterviewSessionStatus }
@@ -224,6 +289,8 @@ export default function LiveSession() {
     if (!session) return
     stopListening()
     setStatus('ended')
+    window.parakeet?.hidePopup()
+    window.parakeet?.clearPopupTranscript()
     const updated = { ...session, status: 'ended' as const, endedAt: new Date().toISOString() }
     updateSession(updated)
     await window.parakeet.saveSession(updated)
@@ -458,6 +525,34 @@ export default function LiveSession() {
           )}
         </section>
       </div>
+
+      {showHelp && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShowHelp(false)}
+        >
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 shadow-2xl p-6 w-[420px] max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold text-white">Keyboard Shortcuts</h2>
+              <button
+                onClick={() => setShowHelp(false)}
+                className="text-slate-400 hover:text-white text-xl leading-none px-1"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-2">
+              {SHORTCUTS.map((s) => (
+                <div key={s.keys} className="flex items-center justify-between gap-4 py-1.5 border-b border-slate-800 last:border-0">
+                  <span className="text-sm text-slate-300">{s.label}</span>
+                  <kbd className="text-xs font-mono bg-slate-800 border border-slate-700 text-slate-400 rounded px-2 py-0.5 shrink-0">{s.keys}</kbd>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500 mt-4">Shortcuts work globally even when the app is not focused.</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -22,6 +22,30 @@ npm run dev                # Vite dev server
 npm run server             # run the REST backend on :3456
 ```
 
+## Global shortcuts & listening popup
+
+While the app runs these work system-wide, even when another window has focus:
+
+| Shortcut                | Action                            |
+| ----------------------- | --------------------------------- |
+| `Ctrl + Shift + Space`  | Start / stop listening            |
+| `Ctrl + Shift + A`      | Generate AI answer                |
+| `Ctrl + Shift + R`      | Regenerate answer                 |
+| `Ctrl + Shift + S`      | Show / hide assistant popup       |
+| `Ctrl + Shift + P`      | Pause / resume transcription      |
+| `Ctrl + Shift + C`      | Clear current question            |
+| `Ctrl + Shift + M`      | Toggle microphone                 |
+| `Ctrl + Shift + Q`      | End interview session             |
+| `Ctrl + Shift + H`      | Show shortcut help                |
+| `Esc`                   | Hide popup                        |
+
+The assistant popup stays always-on-top, never steals keyboard focus, is draggable
+(remembers its position), has a compact/minimize mode, auto-resizes to the live
+transcript, and mirrors the listening/transcribing state.
+
+> Note: these are registered as *global* hotkeys, so while Parakeet runs they
+> take precedence over other apps that use the same combos.
+
 ## Build Windows installer
 
 ```bash
