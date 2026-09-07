@@ -1,0 +1,17 @@
+node_modules/
+dist/
+dist-electron/
+release/
+*.log
+
+# API keys and local data
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
